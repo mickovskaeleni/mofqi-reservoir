@@ -1,7 +1,9 @@
 import numpy as np
 import pytest
+from sklearn.exceptions import NotFittedError
 
 from mofqi_reservoir import (
+    MultiObjectiveFittedQIteration,
     MultiObjectiveTransitionBatch,
     augment_transitions,
     sample_preference_weights,
@@ -150,3 +152,72 @@ def test_augmentation_rejects_invalid_weights(
     """Preference vectors must belong to the unit simplex."""
     with pytest.raises(ValueError):
         augment_transitions(two_objective_batch, weights)
+
+def test_mofqi_trains_one_weight_conditioned_process(
+    two_objective_batch,
+):
+    """MOFQI trains once over all supplied preference weights."""
+    learner = MultiObjectiveFittedQIteration(
+        candidate_actions=[0.0, 2.0, 4.0, 6.0],
+        gamma=0.9,
+        n_iterations=3,
+        n_estimators=20,
+        random_state=42,
+    )
+
+    result = learner.fit(
+        two_objective_batch,
+        weights=[
+            [1.0, 0.0],
+            [0.0, 1.0],
+            [0.5, 0.5],
+        ],
+    )
+
+    assert result is learner
+    assert len(learner.models_) == 3
+    assert learner.augmented_batch_.n_samples == 6
+    assert learner.augmented_batch_.state_dim == 2
+    assert learner.n_objectives_ == 2
+
+
+def test_mofqi_predicts_for_objective_preference(
+    two_objective_batch,
+):
+    """The fitted model accepts a requested objective preference."""
+    learner = MultiObjectiveFittedQIteration(
+        candidate_actions=[0.0, 2.0, 4.0, 6.0],
+        n_iterations=2,
+        n_estimators=20,
+        random_state=42,
+    ).fit(
+        two_objective_batch,
+        weights=[
+            [1.0, 0.0],
+            [0.0, 1.0],
+            [0.5, 0.5],
+        ],
+    )
+
+    predictions = learner.predict(
+        states=[10.0, 20.0],
+        weights=[0.5, 0.5],
+        actions=[2.0, 4.0],
+    )
+
+    assert predictions.shape == (2,)
+    assert np.isfinite(predictions).all()
+
+
+def test_mofqi_requires_training_before_prediction():
+    """Preference-conditioned prediction requires a fitted model."""
+    learner = MultiObjectiveFittedQIteration(
+        candidate_actions=[0.0, 1.0]
+    )
+
+    with pytest.raises(NotFittedError, match="fitted before prediction"):
+        learner.predict(
+            states=[10.0],
+            weights=[0.5, 0.5],
+            actions=[1.0],
+        )
