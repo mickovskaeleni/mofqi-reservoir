@@ -192,3 +192,40 @@ class FittedQIteration:
             )
 
         return np.asarray(self.model_.predict(features), dtype=float)
+    
+    def select_actions(
+        self,
+        states: ArrayLike,
+    ) -> FloatArray:
+        """Select the candidate action with the highest predicted value."""
+        if not hasattr(self, "model_"):
+            raise NotFittedError(
+                "FittedQIteration must be fitted before action selection."
+            )
+
+        state_matrix = _as_feature_matrix(states, "states")
+
+        if state_matrix.shape[1] != self.state_dim_:
+            raise ValueError("states do not match the training dimension.")
+
+        n_states = state_matrix.shape[0]
+        n_actions = self.candidate_actions.shape[0]
+
+        repeated_states = np.repeat(
+            state_matrix,
+            n_actions,
+            axis=0,
+        )
+        tiled_actions = np.tile(
+            self.candidate_actions,
+            (n_states, 1),
+        )
+
+        values = self.predict(
+            states=repeated_states,
+            actions=tiled_actions,
+        ).reshape(n_states, n_actions)
+
+        best_indices = np.argmax(values, axis=1)
+        return self.candidate_actions[best_indices].copy()
+    

@@ -262,3 +262,64 @@ class MultiObjectiveFittedQIteration:
             states=augmented_states,
             actions=action_matrix,
         )
+
+    def select_actions(
+        self,
+        states: ArrayLike,
+        weights: ArrayLike,
+    ) -> FloatArray:
+        """Select greedy actions for the requested objective preferences."""
+        if not hasattr(self, "learner_"):
+            raise NotFittedError(
+                "MultiObjectiveFittedQIteration must be fitted "
+                "before action selection."
+            )
+
+        state_matrix = _as_prediction_matrix(states, "states")
+
+        if state_matrix.shape[1] != self.state_dim_:
+            raise ValueError("states do not match the training dimension.")
+
+        weight_matrix = validate_preference_weights(
+            weights,
+            n_objectives=self.n_objectives_,
+        )
+
+        if weight_matrix.shape[0] == 1:
+            weight_matrix = np.repeat(
+                weight_matrix,
+                state_matrix.shape[0],
+                axis=0,
+            )
+        elif weight_matrix.shape[0] != state_matrix.shape[0]:
+            raise ValueError(
+                "weights must contain one row or one row per state."
+            )
+
+        candidate_actions = self.learner_.candidate_actions
+        n_states = state_matrix.shape[0]
+        n_actions = candidate_actions.shape[0]
+
+        repeated_states = np.repeat(
+            state_matrix,
+            n_actions,
+            axis=0,
+        )
+        repeated_weights = np.repeat(
+            weight_matrix,
+            n_actions,
+            axis=0,
+        )
+        tiled_actions = np.tile(
+            candidate_actions,
+            (n_states, 1),
+        )
+
+        values = self.predict(
+            states=repeated_states,
+            weights=repeated_weights,
+            actions=tiled_actions,
+        ).reshape(n_states, n_actions)
+
+        best_indices = np.argmax(values, axis=1)
+        return candidate_actions[best_indices].copy()

@@ -116,3 +116,24 @@ def test_fqi_requires_training_before_prediction():
 
     with pytest.raises(NotFittedError, match="fitted before prediction"):
         learner.predict(states=[0.0], actions=[0.0])
+
+
+def test_fqi_selects_highest_value_actions(fqi_training_batch):
+    """The greedy policy selects the best candidate action."""
+    learner = FittedQIteration(
+        candidate_actions=[0.0, 1.0],
+        gamma=0.0,
+        n_iterations=1,
+        n_estimators=20,
+        random_state=42,
+    ).fit(fqi_training_batch)
+
+    selected_actions = learner.select_actions(
+        states=[0.0, 1.0],
+    )
+
+    assert selected_actions.shape == (2, 1)
+    np.testing.assert_allclose(
+        selected_actions.ravel(),
+        [1.0, 1.0],
+    )
