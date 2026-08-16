@@ -5,6 +5,12 @@ from mofqi_reservoir.transitions import (
     MultiObjectiveTransitionBatch,
     TransitionBatch,
 )
+from mofqi_reservoir.mofqi import (
+    augment_transitions,
+    sample_preference_weights,
+    scalarize_rewards,
+    validate_preference_weights,
+)
 
 __version__ = "0.1.0"
 __all__ = [
@@ -12,4 +18,8 @@ __all__ = [
     "MultiObjectiveTransitionBatch",
     "TransitionBatch",
     "build_bellman_targets",
+    "augment_transitions",
+    "sample_preference_weights",
+    "scalarize_rewards",
+    "validate_preference_weights",
 ]
