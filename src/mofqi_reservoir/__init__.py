@@ -21,6 +21,14 @@ from mofqi_reservoir.evaluation import (
     evaluate_mofqi_policy,
     evaluate_policy,
 )
+from mofqi_reservoir.reservoir import (
+    SyntheticReservoir,
+    sample_reservoir_transitions,
+)
+from mofqi_reservoir.comparison import (
+    TrainingComparison,
+    train_fqi_mofqi_comparison,
+)
 
 __version__ = "0.1.0"
 
@@ -38,4 +46,8 @@ __all__ = [
     "evaluate_policy",
     "evaluate_fqi_policy",
     "evaluate_mofqi_policy",
+    "SyntheticReservoir",
+    "TrainingComparison",
+    "sample_reservoir_transitions",
+    "train_fqi_mofqi_comparison",
 ]
