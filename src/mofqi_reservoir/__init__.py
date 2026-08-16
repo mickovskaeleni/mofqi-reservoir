@@ -17,6 +17,8 @@ from mofqi_reservoir.transitions import (
 )
 from mofqi_reservoir.evaluation import (
     PolicyEvaluation,
+    evaluate_fqi_policy,
+    evaluate_mofqi_policy,
     evaluate_policy,
 )
 
@@ -34,4 +36,6 @@ __all__ = [
     "validate_preference_weights",
     "PolicyEvaluation",
     "evaluate_policy",
+    "evaluate_fqi_policy",
+    "evaluate_mofqi_policy",
 ]

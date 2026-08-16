@@ -6,8 +6,13 @@ from typing import Callable, Protocol
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 
-from mofqi_reservoir.mofqi import validate_preference_weights
+from sklearn.exceptions import NotFittedError
 
+from mofqi_reservoir.fqi import FittedQIteration
+from mofqi_reservoir.mofqi import (
+    MultiObjectiveFittedQIteration,
+    validate_preference_weights,
+)
 
 FloatArray = NDArray[np.float64]
 Policy = Callable[[FloatArray], ArrayLike]
@@ -159,4 +164,66 @@ def evaluate_policy(
         actions=np.vstack(actions),
         rewards=np.vstack(rewards),
         objective_returns=objective_returns,
+    )
+
+def evaluate_fqi_policy(
+    environment: MultiObjectiveEnvironment,
+    learner: FittedQIteration,
+    max_steps: int,
+    gamma: float = 1.0,
+) -> PolicyEvaluation:
+    """Evaluate a greedy policy learned by standard FQI."""
+    if not hasattr(learner, "model_"):
+        raise NotFittedError(
+            "FittedQIteration must be fitted before policy evaluation."
+        )
+
+    def policy(state: FloatArray) -> FloatArray:
+        return learner.select_actions(
+            states=state.reshape(1, -1),
+        )[0]
+
+    return evaluate_policy(
+        environment=environment,
+        policy=policy,
+        max_steps=max_steps,
+        gamma=gamma,
+    )
+
+
+def evaluate_mofqi_policy(
+    environment: MultiObjectiveEnvironment,
+    learner: MultiObjectiveFittedQIteration,
+    weights: ArrayLike,
+    max_steps: int,
+    gamma: float = 1.0,
+) -> PolicyEvaluation:
+    """Evaluate a MOFQI policy for one objective preference."""
+    if not hasattr(learner, "learner_"):
+        raise NotFittedError(
+            "MultiObjectiveFittedQIteration must be fitted "
+            "before policy evaluation."
+        )
+
+    weight_matrix = validate_preference_weights(
+        weights,
+        n_objectives=learner.n_objectives_,
+    )
+
+    if weight_matrix.shape[0] != 1:
+        raise ValueError(
+            "Policy evaluation requires exactly one weight vector."
+        )
+
+    def policy(state: FloatArray) -> FloatArray:
+        return learner.select_actions(
+            states=state.reshape(1, -1),
+            weights=weight_matrix,
+        )[0]
+
+    return evaluate_policy(
+        environment=environment,
+        policy=policy,
+        max_steps=max_steps,
+        gamma=gamma,
     )
