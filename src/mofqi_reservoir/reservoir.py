@@ -2,6 +2,7 @@
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
+from mofqi_reservoir.transitions import MultiObjectiveTransitionBatch
 
 
 FloatArray = NDArray[np.float64]
@@ -144,3 +145,85 @@ class SyntheticReservoir:
         )
 
         return state, rewards, self.terminated
+
+
+def sample_reservoir_transitions(
+    n_samples: int,
+    storage_min: float = 0.0,
+    storage_max: float = 155.0,
+    action_min: float = 0.0,
+    action_max: float = 160.0,
+    inflow_mean: float = 40.0,
+    inflow_std: float = 10.0,
+    capacity: float = 100.0,
+    flood_threshold: float = 50.0,
+    irrigation_demand: float = 50.0,
+    surface_area: float = 1.0,
+    random_state: int | None = None,
+) -> MultiObjectiveTransitionBatch:
+    """Sample offline reservoir transitions from the generative model."""
+    if n_samples < 1:
+        raise ValueError("n_samples must be at least 1.")
+
+    if storage_min >= storage_max:
+        raise ValueError("storage_min must be smaller than storage_max.")
+
+    if action_min >= action_max:
+        raise ValueError("action_min must be smaller than action_max.")
+
+    if inflow_std < 0.0:
+        raise ValueError("inflow_std must be nonnegative.")
+
+    if capacity <= 0.0:
+        raise ValueError("capacity must be positive.")
+
+    if surface_area <= 0.0:
+        raise ValueError("surface_area must be positive.")
+
+    generator = np.random.default_rng(random_state)
+
+    states = generator.uniform(
+        storage_min,
+        storage_max,
+        size=n_samples,
+    )
+    actions = generator.uniform(
+        action_min,
+        action_max,
+        size=n_samples,
+    )
+    inflows = generator.normal(
+        inflow_mean,
+        inflow_std,
+        size=n_samples,
+    )
+
+    minimum_releases = np.maximum(states - capacity, 0.0)
+    maximum_releases = np.maximum(states, 0.0)
+    actual_releases = np.maximum(
+        minimum_releases,
+        np.minimum(actions, maximum_releases),
+    )
+
+    next_states = states + inflows - actual_releases
+    next_levels = next_states / surface_area
+
+    flood_rewards = -np.maximum(
+        next_levels - flood_threshold,
+        0.0,
+    )
+    irrigation_rewards = -np.maximum(
+        irrigation_demand - actual_releases,
+        0.0,
+    )
+
+    rewards = np.column_stack(
+        (flood_rewards, irrigation_rewards)
+    )
+
+    return MultiObjectiveTransitionBatch(
+        states=states,
+        actions=actions,
+        next_states=next_states,
+        rewards=rewards,
+    )

@@ -1,7 +1,10 @@
 import numpy as np
 import pytest
 
-from mofqi_reservoir import SyntheticReservoir
+from mofqi_reservoir import (
+    SyntheticReservoir,
+    sample_reservoir_transitions,
+)
 
 
 def test_reservoir_calculates_mass_balance_and_rewards():
@@ -92,3 +95,39 @@ def test_reservoir_inflows_are_reproducible():
         second_transition[1],
     )
     assert first.last_inflow_ == second.last_inflow_
+
+def test_sample_reservoir_transitions_returns_vector_rewards():
+    """Offline reservoir samples contain both objectives."""
+    batch = sample_reservoir_transitions(
+        n_samples=50,
+        random_state=42,
+    )
+
+    assert batch.n_samples == 50
+    assert batch.state_dim == 1
+    assert batch.action_dim == 1
+    assert batch.n_objectives == 2
+    assert batch.rewards.shape == (50, 2)
+    assert np.isfinite(batch.states).all()
+    assert np.isfinite(batch.next_states).all()
+    assert np.all(batch.rewards <= 0.0)
+
+
+def test_sample_reservoir_transitions_is_reproducible():
+    """A fixed seed reproduces the complete offline dataset."""
+    first = sample_reservoir_transitions(
+        n_samples=20,
+        random_state=42,
+    )
+    second = sample_reservoir_transitions(
+        n_samples=20,
+        random_state=42,
+    )
+
+    np.testing.assert_allclose(first.states, second.states)
+    np.testing.assert_allclose(first.actions, second.actions)
+    np.testing.assert_allclose(
+        first.next_states,
+        second.next_states,
+    )
+    np.testing.assert_allclose(first.rewards, second.rewards)
