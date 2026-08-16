@@ -221,3 +221,44 @@ def test_mofqi_requires_training_before_prediction():
             weights=[0.5, 0.5],
             actions=[1.0],
         )
+
+
+def test_mofqi_selects_actions_for_different_preferences():
+    """Different objective preferences produce greedy policy actions."""
+    batch = MultiObjectiveTransitionBatch(
+        states=[0.0, 0.0],
+        actions=[0.0, 1.0],
+        next_states=[0.0, 0.0],
+        rewards=[
+            [1.0, 0.0],
+            [0.0, 1.0],
+        ],
+    )
+
+    learner = MultiObjectiveFittedQIteration(
+        candidate_actions=[0.0, 1.0],
+        gamma=0.0,
+        n_iterations=1,
+        n_estimators=20,
+        random_state=42,
+    ).fit(
+        batch,
+        weights=[
+            [1.0, 0.0],
+            [0.0, 1.0],
+        ],
+    )
+
+    selected_actions = learner.select_actions(
+        states=[0.0, 0.0],
+        weights=[
+            [1.0, 0.0],
+            [0.0, 1.0],
+        ],
+    )
+
+    assert selected_actions.shape == (2, 1)
+    np.testing.assert_allclose(
+        selected_actions.ravel(),
+        [0.0, 1.0],
+    )

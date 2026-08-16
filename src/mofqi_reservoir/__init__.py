@@ -15,6 +15,12 @@ from mofqi_reservoir.transitions import (
     MultiObjectiveTransitionBatch,
     TransitionBatch,
 )
+from mofqi_reservoir.evaluation import (
+    PolicyEvaluation,
+    evaluate_fqi_policy,
+    evaluate_mofqi_policy,
+    evaluate_policy,
+)
 
 __version__ = "0.1.0"
 
@@ -28,4 +34,8 @@ __all__ = [
     "sample_preference_weights",
     "scalarize_rewards",
     "validate_preference_weights",
+    "PolicyEvaluation",
+    "evaluate_policy",
+    "evaluate_fqi_policy",
+    "evaluate_mofqi_policy",
 ]
